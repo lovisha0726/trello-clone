@@ -6,7 +6,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const boardRoutes = require('./routes/boardRoutes');
 const listRoutes = require('./routes/listRoutes');
 const cardRoutes = require('./routes/cardRoutes');
-const { testConnection } = require('./config/db');
+const { getDatabaseStatus, initializeDatabase } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,6 +38,26 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+app.get('/api/health', async (req, res) => {
+  try {
+    const data = await getDatabaseStatus();
+    res.json({
+      success: data.missingTables.length === 0,
+      message: data.missingTables.length === 0 ? 'Backend and database working' : 'Database schema incomplete',
+      data
+    });
+  } catch (err) {
+    res.status(503).json({
+      success: false,
+      message: 'Database connection failed',
+      data: {
+        code: err.code,
+        error: err.message
+      }
+    });
+  }
+});
+
 app.use('/api/boards', boardRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/cards', cardRoutes);
@@ -61,7 +81,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
-    await testConnection();
+    await initializeDatabase();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
