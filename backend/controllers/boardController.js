@@ -5,6 +5,33 @@ const sendResponse = (res, statusCode, success, message, data = {}) => {
 };
 
 const isEmpty = (value) => !value || !value.trim();
+const defaultBackground = '#f4f4f5';
+let boardsHasBackgroundColumn;
+
+const hasBoardsBackgroundColumn = async () => {
+  if (typeof boardsHasBackgroundColumn === 'boolean') {
+    return boardsHasBackgroundColumn;
+  }
+
+  const [rows] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'boards'
+       AND COLUMN_NAME = 'background'`
+  );
+
+  boardsHasBackgroundColumn = rows.length > 0;
+  return boardsHasBackgroundColumn;
+};
+
+const withBoardDefaults = (board) => {
+  if (!board) return board;
+  return {
+    ...board,
+    background: board.background || defaultBackground
+  };
+};
 
 const createBoard = async (req, res) => {
   try {
@@ -14,14 +41,17 @@ const createBoard = async (req, res) => {
       return sendResponse(res, 400, false, 'Board title is required');
     }
 
-    const [result] = await pool.query(
-      'INSERT INTO boards (title, background) VALUES (?, ?)',
-      [title.trim(), background || '#f4f4f5']
-    );
+    const hasBackgroundColumn = await hasBoardsBackgroundColumn();
+    const [result] = hasBackgroundColumn
+      ? await pool.query(
+          'INSERT INTO boards (title, background) VALUES (?, ?)',
+          [title.trim(), background || defaultBackground]
+        )
+      : await pool.query('INSERT INTO boards (title) VALUES (?)', [title.trim()]);
 
     const [rows] = await pool.query('SELECT * FROM boards WHERE id = ?', [result.insertId]);
 
-    return sendResponse(res, 201, true, 'Board created successfully', rows[0]);
+    return sendResponse(res, 201, true, 'Board created successfully', withBoardDefaults(rows[0]));
   } catch (err) {
     console.error('Create board error:', err);
     return sendResponse(res, 500, false, 'Failed to create board');
@@ -79,7 +109,7 @@ const getBoardDetails = async (req, res) => {
     );
 
     return sendResponse(res, 200, true, 'Board details fetched successfully', {
-      board: boards[0],
+      board: withBoardDefaults(boards[0]),
       lists,
       cards,
       labels,
@@ -102,10 +132,13 @@ const updateBoard = async (req, res) => {
       return sendResponse(res, 400, false, 'Board title is required');
     }
 
-    const [result] = await pool.query(
-      'UPDATE boards SET title = ?, background = ? WHERE id = ?',
-      [title.trim(), background || '#f4f4f5', boardId]
-    );
+    const hasBackgroundColumn = await hasBoardsBackgroundColumn();
+    const [result] = hasBackgroundColumn
+      ? await pool.query(
+          'UPDATE boards SET title = ?, background = ? WHERE id = ?',
+          [title.trim(), background || defaultBackground, boardId]
+        )
+      : await pool.query('UPDATE boards SET title = ? WHERE id = ?', [title.trim(), boardId]);
 
     if (result.affectedRows === 0) {
       return sendResponse(res, 404, false, 'Board not found');
@@ -113,7 +146,7 @@ const updateBoard = async (req, res) => {
 
     const [rows] = await pool.query('SELECT * FROM boards WHERE id = ?', [boardId]);
 
-    return sendResponse(res, 200, true, 'Board updated successfully', rows[0]);
+    return sendResponse(res, 200, true, 'Board updated successfully', withBoardDefaults(rows[0]));
   } catch (err) {
     console.error('Update board error:', err);
     return sendResponse(res, 500, false, 'Failed to update board');
@@ -124,7 +157,7 @@ const getBoards = async (req, res) => {
   try {
     const [boards] = await pool.query('SELECT * FROM boards ORDER BY created_at DESC, id DESC');
 
-    return sendResponse(res, 200, true, 'Boards fetched successfully', boards);
+    return sendResponse(res, 200, true, 'Boards fetched successfully', boards.map(withBoardDefaults));
   } catch (err) {
     console.error('Get boards error:', err);
     return sendResponse(res, 500, false, 'Failed to fetch boards');

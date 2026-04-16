@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { testConnection } = require('./config/db');
 const boardRoutes = require('./routes/boardRoutes');
@@ -57,9 +58,13 @@ const startServer = async () => {
   } catch (err) {
     console.error('Database connection failed:', err.message);
     app.listen(PORT,() =>{
-      console.log('Server running without DB on port ${PORT}');
+      console.log(`Server running without DB on port ${PORT}`);
     })
   }
 };
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
