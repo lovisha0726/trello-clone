@@ -29,28 +29,34 @@ const BoardPage = ({ board }) => {
   const [loading, setLoading] = useState(true);
 
   const loadBoard = useCallback(async () => {
+    if (!board?.id) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await boardApi.getBoardDetails(board.id);
 
-      setActiveBoard(data.board);
-      setLists(data.lists);
-      setCards(data.cards);
-      setLabels(data.labels);
-      setMembers(data.members);
-      setCardLabels(data.cardLabels);
-      setCardMembers(data.cardMembers);
+      setActiveBoard(data.board || board);
+      setLists(Array.isArray(data.lists) ? data.lists : []);
+      setCards(Array.isArray(data.cards) ? data.cards : []);
+      setLabels(Array.isArray(data.labels) ? data.labels : []);
+      setMembers(Array.isArray(data.members) ? data.members : []);
+      setCardLabels(Array.isArray(data.cardLabels) ? data.cardLabels : []);
+      setCardMembers(Array.isArray(data.cardMembers) ? data.cardMembers : []);
     } catch (err) {
       console.error(err);
       alert('Unable to load this board.');
     } finally {
       setLoading(false);
     }
-  }, [board.id]);
+  }, [board]);
 
   useEffect(() => {
+    setActiveBoard(board);
     loadBoard();
-  }, [loadBoard]);
+  }, [board, loadBoard]);
 
   const cardMeta = useMemo(() => {
     const meta = {};

@@ -3,11 +3,10 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const mysql = require('mysql2/promise'); 
-
 const boardRoutes = require('./routes/boardRoutes');
 const listRoutes = require('./routes/listRoutes');
 const cardRoutes = require('./routes/cardRoutes');
+const { testConnection } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +17,17 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl}`);
   next();
+});
+
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Trello Clone API is running',
+    data: {
+      health: '/api/test',
+      boards: '/api/boards'
+    }
+  });
 });
 
 app.get('/api/test', (req, res) => {
@@ -49,18 +59,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ NEW DB CONNECTION (RAILWAY FIX)
-const testConnection = async () => {
-  try {
-    const connection = await mysql.createConnection(process.env.DATABASE_URL);
-    console.log('Database connected ✅');
-    await connection.end();
-  } catch (err) {
-    console.error('Database connection failed:', err.message);
-    throw err;
-  }
-};
-
 const startServer = async () => {
   try {
     await testConnection();
@@ -68,11 +66,9 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
-
   } catch (err) {
     console.error('Database connection failed:', err.message);
 
-    // ❗ server crash nahi hona chahiye
     app.listen(PORT, () => {
       console.log(`Server running without DB on port ${PORT}`);
     });

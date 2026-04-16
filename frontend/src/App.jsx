@@ -17,8 +17,9 @@ function App() {
     try {
       setLoading(true);
       const data = await boardApi.getBoards();
-      setBoards(data);
-      setSelectedBoard(data[0] || null);
+      const nextBoards = Array.isArray(data) ? data : [];
+      setBoards(nextBoards);
+      setSelectedBoard(nextBoards[0] || null);
     } catch (err) {
       console.error(err);
       alert('Unable to load boards. Please check if the backend is running.');
