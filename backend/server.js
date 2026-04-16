@@ -3,7 +3,8 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const { testConnection } = require('./config/db');
+const mysql = require('mysql2/promise'); 
+
 const boardRoutes = require('./routes/boardRoutes');
 const listRoutes = require('./routes/listRoutes');
 const cardRoutes = require('./routes/cardRoutes');
@@ -48,6 +49,18 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ✅ NEW DB CONNECTION (RAILWAY FIX)
+const testConnection = async () => {
+  try {
+    const connection = await mysql.createConnection(process.env.DATABASE_URL);
+    console.log('Database connected ✅');
+    await connection.end();
+  } catch (err) {
+    console.error('Database connection failed:', err.message);
+    throw err;
+  }
+};
+
 const startServer = async () => {
   try {
     await testConnection();
@@ -55,11 +68,14 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
+
   } catch (err) {
     console.error('Database connection failed:', err.message);
-    app.listen(PORT,() =>{
+
+    // ❗ server crash nahi hona chahiye
+    app.listen(PORT, () => {
       console.log(`Server running without DB on port ${PORT}`);
-    })
+    });
   }
 };
 
