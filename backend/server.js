@@ -56,7 +56,9 @@ const startServer = async () => {
     });
   } catch (err) {
     console.error('Database connection failed:', err.message);
-    process.exit(1);
+    app.listen(PORT,() =>{
+      console.log('Server running without DB on port ${PORT}');
+    })
   }
 };
 
